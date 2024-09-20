@@ -1,0 +1,242 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <link rel="stylesheet" href="style.css" class="css">
+  <title>Detail Anime</title>
+    <style>
+    .container {
+      max-width: 100%;
+      margin: 20px auto;
+      padding: 20px;
+      border: 1px solid #ccc;
+      border-radius: 5px;
+    }
+   iframe {
+     outline: none;
+     box-shadow: none;
+     border: none;
+     width: 21rem;
+     height: 11rem;
+     margin-left: 0.5rem;
+    }
+    .image {
+      max-width: 100%;
+      height: auto;
+      margin-bottom: 10px;
+    }
+
+    .details {
+      margin-bottom: 20px;
+    }
+
+    #streaming-area {
+      margin-bottom: 20px;
+    }
+
+    #episode-buttons, #resolution-buttons {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 5px;
+      margin-bottom: 10px;
+    }
+
+    #episode-buttons button, #resolution-buttons button {
+      padding: 5px 10px;
+      border: 1px solid #ccc;
+      border-radius: 3px;
+      cursor: pointer;
+    }
+
+    #episode-buttons button.active,
+    #resolution-buttons button.active {
+      background-color: blue; 
+      color: white;
+    }
+
+    .downloads {
+      margin-top: 20px;
+    }
+
+    .downloads h3 {
+      margin-bottom: 10px;
+    }
+
+    .downloads h4 {
+      margin-top: 15px;
+      margin-bottom: 5px;
+    }
+
+    .downloads ul {
+      list-style: none;
+      padding: 0;
+      margin: 0;
+    }
+
+    .downloads li {
+      margin-bottom: 5px;
+    }
+  </style>
+</head>
+<body>
+  <div id="anime-details"></div>
+
+  <div id="streaming-area">
+    <iframe id="streaming-iframe" src="" allowfullscreen></iframe>
+    <div id="episode-buttons"></div>
+    <div id="resolution-buttons"></div>
+  </div>
+
+  <div id="downloads"></div>
+
+  <script>
+    const urlParams = new URLSearchParams(window.location.search);
+    const anime_url = urlParams.get("url");
+
+    if (!anime_url) {
+      document.getElementById("anime-details").innerHTML = "<p>Error: URL anime tidak ditemukan.</p>";
+    } else {
+      fetch(`/api/details?url=${encodeURIComponent(anime_url)}`)
+        .then((response) => response.json())
+        .then((data) => {
+          const detailsDiv = document.getElementById("anime-details");
+
+          let html = `
+            <h1>${data["Judul "]}</h1> 
+
+            <img class="image" src="${data["img"]}" alt="${data["Judul "]}">
+
+            <div class="container">
+              <p><strong>Judul Alternatif:</strong> ${data["Judul Alternatif "]}</p>
+              <p><strong>Durasi Per Episode:</strong> ${data["Durasi Per Episode "]}</p>
+              <p><strong>Rating:</strong> ${data["Rating "]}</p>
+              <p><strong>Studio:</strong> ${data["Studio "]}</p>
+              <p><strong>Kategori:</strong> ${data["Kategori "].split(", ").join(", ")}</p> 
+              <p><strong>Musim / Rilis:</strong> ${data["Musim / Rilis"]}</p>
+              <p><strong>Type:</strong> ${data["Type "]}</p>
+              <p><strong>Series:</strong> ${data["Series "]}</p>
+              <p><strong>Subtitle:</strong> ${data["Subtitle "]}</p>
+              <p><strong>Credit:</strong> ${data["Credit "]}</p>
+              <p><strong>Sinopsis:</strong> ${data.sinopsis}</p>
+            </div>
+          `;
+
+          const episodeButtons = document.getElementById("episode-buttons");
+          const resolutionButtons = document.getElementById("resolution-buttons");
+
+          data.episodes.forEach((episode) => {
+        const button = document.createElement("button");
+        button.textContent = episode.title;
+        button.addEventListener("click", () => {
+         updateIframe(episode.title, null); 
+
+         episodeButtons.querySelectorAll("button").forEach(btn => btn.classList.remove("active"));
+         button.classList.add("active");
+        });
+        episodeButtons.appendChild(button);
+       });
+
+          const firstEpisode = data.episodes[0];
+          for (const resolution in firstEpisode.streaming_urls) {
+        const button = document.createElement("button");
+        button.textContent = resolution;
+        button.addEventListener("click", () => {
+         updateIframe(null, resolution); 
+
+         resolutionButtons.querySelectorAll("button").forEach(btn => btn.classList.remove("active"));
+         button.classList.add("active");
+        });
+        resolutionButtons.appendChild(button);
+       }
+
+          let currentEpisode = data.episodes[0].title;
+          let currentResolution = Object .keys(firstEpisode.streaming_urls)[0];
+          updateIframe(currentEpisode, currentResolution); 
+
+          // Downloads section (modified)
+          const downloadsDiv = document.getElementById("downloads");
+          if (Object.keys(data.episode_downloads).length > 0 || Object.keys(data.batch_downloads).length > 0) {
+            let downloadsHtml = `
+              <div class="downloads">
+            `;
+
+            // Episode downloads
+            if (Object.keys(data.episode_downloads).length > 0) {
+              downloadsHtml += `
+                <h3>Unduhan Per Episode</h3>
+              `;
+
+              for (const episodeTitle in data.episode_downloads) {
+                if (episodeTitle !== "Catatan dari admin") {
+                  downloadsHtml += `
+                    <h4>${episodeTitle}</h4>
+                  `;
+
+                  for (const resolution in data.episode_downloads[episodeTitle]) {
+                    downloadsHtml += `<p><strong>${resolution}: </strong>`;
+
+                    // Iterate over link names within each resolution
+                    for (const linkName in data.episode_downloads[episodeTitle][resolution]) {
+                      const link = data.episode_downloads[episodeTitle][resolution][linkName];
+                      downloadsHtml += `<a href="${link}" target="_blank">${linkName}</a> `;
+                    }
+
+                    downloadsHtml += `</p><br>`;
+                  }
+                }
+              }
+            }
+
+            // Batch downloads (if any)
+            if (Object.keys(data.batch_downloads).length > 0) {
+              downloadsHtml += `
+                <h3>Unduhan Batch</h3>
+              `;
+
+              for (const resolution in data.batch_downloads) {
+                downloadsHtml += `<p><strong>${resolution}: </strong>`;
+
+                data.batch_downloads[resolution].forEach((link, index) => {
+                  downloadsHtml += `<a href="${link}" target="_blank">Unduh ${index + 1}</a> `;
+                });
+
+                downloadsHtml += `</p><br>`;
+              }
+            }
+
+            downloadsHtml += `
+              </div>
+            `;
+
+            downloadsDiv.innerHTML = downloadsHtml;
+          }
+
+          detailsDiv.innerHTML = html;
+
+          function updateIframe(newEpisode = null, newResolution = null) {
+        if (newEpisode) {
+         currentEpisode = newEpisode;
+        }
+        if (newResolution) {
+         currentResolution = newResolution;
+        }
+
+        const episodeData = data.episodes.find((ep) => ep.title === currentEpisode);
+        if (episodeData && episodeData.streaming_urls[currentResolution]) {
+         document.getElementById("streaming-iframe").src = episodeData.streaming_urls[currentResolution];
+        } else {
+         document.getElementById("streaming-iframe").src = "";
+         alert("URL streaming tidak ditemukan untuk episode dan resolusi yang dipilih.");
+        }
+       }
+
+        })
+        .catch((error) => {
+          console.error("Error fetching data:", error);
+          document.getElementById("anime-details").innerHTML = "<p>Error: Terjadi kesalahan saat mengambil data anime.</p>";
+        });
+    }
+  </script>
+</body>
+</html>

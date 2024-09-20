@@ -1,0 +1,70 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Anime Search</title>
+    <style>
+        /* Tambahkan beberapa gaya sederhana */
+        body { font-family: Arial, sans-serif; }
+        .container { max-width: 800px; margin: 0 auto; padding: 20px; }
+        .search-form { margin-bottom: 20px; }
+        .results { margin-top: 20px; }
+        .result-item { border: 1px solid #ddd; padding: 10px; margin-bottom: 10px; }
+        .result-item img { max-width: 100px; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Search Anime</h1>
+        <form class="search-form" id="searchForm">
+            <input type="text" id="searchQuery" placeholder="Cari anime disini..." autocomplete="off">
+            <button type="submit">Search</button>
+        </form>
+        <div class="results" id="results"></div>
+    </div>
+
+    <script>
+        document.getElementById('searchForm').addEventListener('submit', function(event) {
+            event.preventDefault();
+            const query = document.getElementById('searchQuery').value;
+            fetch(`/api/search?q=${encodeURIComponent(query)}`)
+                .then(response => {
+                    if (!response.ok) {
+                        throw new Error('Network response was not ok');
+                    }
+                    return response.json();
+                })
+                .then(data => {
+                    const resultsDiv = document.getElementById('results');
+                    resultsDiv.innerHTML = ''; 
+
+                    if (data.error) { // Menangani error dari server
+                        resultsDiv.innerHTML = `<p>Error: ${data.error}</p>`;
+                    } else if (data.length === 0) {
+                        resultsDiv.innerHTML = '<p>No results found.</p>';
+                    } else {
+                        data.forEach(item => {
+                            const resultItem = document.createElement('div');
+                            resultItem.className = 'result-item';
+                            resultItem.innerHTML = `
+                                <a href="details.html?url=${encodeURIComponent(item.anime_url)}" target="_blank"> 
+                                    <img src="${item.image}" alt="${item.title}">
+                                    <h2>${item.title}</h2>
+                                    <p>${item.episode}</p>
+                                    <p>Rating: ${item.rating}</p>
+                                </a>
+                            `;
+                            resultsDiv.appendChild(resultItem);
+                        });
+                    }
+                })
+                .catch(error => {
+                    console.error('Error:', error);
+                    // Anda bisa menampilkan pesan error yang lebih user-friendly di halaman web
+                    // document.getElementById('results').innerHTML = '<p>An error occurred. Please try again later.</p>';
+                });
+        });
+    </script>
+</body>
+</html>

@@ -1,0 +1,64 @@
+const express = require('express');
+const path = require('path');
+const { spawn } = require('child_process');
+
+const app = express();
+const port = 3000;
+
+// Middleware untuk melayani file statis dari direktori 'public'
+app.use(express.static(path.join(__dirname, 'public')));
+
+// Endpoint untuk menangani permintaan pencarian
+app.get('/api/search', (req, res) => {
+  const query = req.query.q;
+
+  if (!query) {
+    return res.status(400).json({ error: 'Parameter query "q" wajib diisi.' });
+  }
+
+  const pythonProcess = spawn('python', ['scrapers/nimegami_search.py', query]);
+
+  let outputData = '';
+  pythonProcess.stdout.on('data', (data) => {
+    outputData += data;
+  });
+
+  pythonProcess.stderr.on('data', (data) => {
+    console.error(`stderr: ${data}`);
+    return res.status(500).json({ error: 'Terjadi kesalahan saat melakukan scraping.' });
+  });
+
+  pythonProcess.on('close', (code) => {
+    if (code === 0) {
+      try {
+        const jsonData = JSON.parse(outputData);
+        res.json(jsonData);
+      } catch (error) {
+        console.error('Error parsing JSON:', error);
+        res.status(500).json({ error: 'Terjadi kesalahan saat memproses data.' });
+      }
+    } else {
+      res.status(500).json({ error: 'Proses Python berakhir dengan error.' });
+    }
+  });
+});
+
+// Endpoint untuk menangani permintaan detail anime (sementara kosong)
+app.get('/api/details', (req, res) => {
+  // ... (akan diimplementasikan nanti)
+});
+
+// Endpoint untuk menangani permintaan streaming episode (sementara kosong)
+app.get('/api/episode', (req, res) => {
+  // ... (akan diimplementasikan nanti)
+});
+
+// Route untuk melayani berkas HTML dari direktori 'public'
+app.get('/', (req, res) => {
+  res.sendFile(path.join(__dirname, 'public', 'index.html'));
+});
+
+// Menjalankan server
+app.listen(port, () => {
+  console.log(`Server berjalan di http://localhost:${port}`);
+});

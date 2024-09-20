@@ -1,0 +1,165 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="stylesheet" href="style.css" class="css">
+    <title>Streaming Anime</title>
+<style>
+:root {
+  --bg-color: #181818; /* Warna latar belakang gelap */
+  --text-color: #f0f0f0; /* Warna teks terang */
+  --accent-color: #ff6600; /* Warna aksen (opsional) */
+}
+
+body {
+  font-family: sans-serif;
+  background-color: var(--bg-color);
+  color: var(--text-color);
+  margin: 0;
+  padding: 0;
+}
+#search-form {
+  display: flex;
+  justify-content: center;
+  padding: 20px;
+}
+
+#search-input {
+  padding: 10px;
+  border: none;
+  border-radius: 5px 0 0 5px;
+  width: 300px;
+}
+
+#search-button {
+  padding: 10px;
+  background-color: var(--accent-color);
+  color: white;
+  border: none;
+  border-radius: 0 5px 5px 0;
+  cursor: pointer;
+}
+</style>
+</head>
+<body>
+
+    <div id="search-form">
+        <input type="text" id="search-input" placeholder="Cari anime...">
+        <button id="search-button">Cari</button>
+    </div>
+
+    <div class="product-card" id="search-results">
+        </div>
+
+    <script>
+      // Fungsi untuk melakukan permintaan AJAX
+async function fetchData(url) {
+    try {
+        const response = await fetch(url);
+        if (!response.ok) {
+            throw new Error('Network response was not ok');
+        }
+        return await response.json();
+    } catch (error) {
+        console.error('Error fetching data:', error);
+        // Tampilkan pesan error kepada pengguna
+    }
+}
+
+// Penanganan formulir pencarian di index.html
+const searchForm = document.getElementById('search-form');
+const searchInput = document.getElementById('search-input');
+const searchButton = document.getElementById('search-button'); // Tambahkan baris ini
+const searchResults = document.getElementById('search-results');
+// Tambahkan event listener ke tombol "Cari"
+searchButton.addEventListener('click', async (event) => {
+    event.preventDefault(); // Mencegah refresh halaman
+
+    const query = searchInput.value;
+    const data = await fetchData(`/api/search?q=${query}`);
+
+    // Bersihkan hasil pencarian sebelumnya
+    searchResults.innerHTML = '';
+
+    // Tampilkan hasil pencarian
+    if (data && data.length > 0) {
+        data.forEach(anime => {
+            const animeCard = `
+             <a href="detail.html?url=${encodeURIComponent(anime.anime_url)}">
+   <div class="anime-card">
+                    <img src="${anime.image}" alt="${anime.title}">
+                    <div class="info">
+                        <h3>${anime.title}</h3>
+                        <p>${anime.status} - ${anime.type}</p>
+                       
+                    </div>
+                </div> </a>
+            `;
+            searchResults.innerHTML += animeCard;
+        });
+    } else {
+        searchResults.innerHTML = '<p>Tidak ada hasil ditemukan.</p>';
+    }
+});
+
+// Penanganan halaman detail anime di detail.html
+const animeDetails = document.getElementById('anime-details');
+const videoIframe = document.getElementById('video-iframe');
+
+// Ambil URL anime dari parameter query string
+const urlParams = new URLSearchParams(window.location.search);
+const animeUrl = urlParams.get('url');
+
+if (animeUrl) {
+    fetchData(`/api/details?url=${animeUrl}`)
+        .then(data => {
+            if (data && !data.error) {
+                // Tampilkan detail anime
+                animeDetails.innerHTML = `
+                    <h1>${data.title}</h1>
+                    <div class="poster">
+                        <img src="${data.image}" alt="${data.title}">
+                    </div>
+                    <div class="info">
+                        <p>Sinopsis: ${data.sinopsis}</p>
+                        <p>Genre: ${data.Kategori.join(', ')}</p>
+                        <p>Musim / Rilis: ${data['Musim / Rilis']}</p>
+                        <p>Type: ${data.Type}</p>
+                        <p>Series: ${data.Series}</p>
+                        </div>
+                    <div class="episodes">
+                        <h2>Episode</h2>
+                        <ul id="episode-list">
+                            ${data.episodes.map((episode, index) => `
+                                <li data-episode-index="${index}">${episode.title}</li>
+                            `).join('')}
+                        </ul>
+                    </div>
+                `;
+
+                // Tambahkan event listener untuk pemilihan episode
+                const episodeList = document.getElementById('episode-list');
+                episodeList.addEventListener('click', (event) => {
+                    const episodeIndex = event.target.dataset.episodeIndex;
+                    const episode = data.episodes[episodeIndex];
+                    const streamingUrls = episode.streaming_urls;
+
+                    // Pilih resolusi tertinggi yang tersedia (misalnya 720p)
+                    const preferredResolution = '720p';
+                    const streamingUrl = streamingUrls[preferredResolution] || Object.values(streamingUrls)[0];
+
+                    // Muat URL streaming ke dalam iframe
+                    videoIframe.src = streamingUrl;
+                });
+            } else {
+                animeDetails.innerHTML = '<p>Anime tidak ditemukan.</p>';
+            }
+        });
+} else {
+    animeDetails.innerHTML = '<p>URL anime tidak valid.</p>';
+}
+
+    </script>
+</body>
+</html>

@@ -1,0 +1,59 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Streaming Anime</title>
+  <style>
+    /* Tambahkan CSS sesuai kebutuhan Anda */
+  </style>
+</head>
+<body>
+
+  <div id="videoContainer"></div> 
+
+  <script>
+    const urlParams = new URLSearchParams(window.location.search);
+    const episodeUrl = urlParams.get('url');
+
+    if (!episodeUrl) {
+      document.getElementById('videoContainer').textContent = 'URL episode tidak ditemukan.';
+    } else {
+      fetch(`/api/episode?url=${encodeURIComponent(episodeUrl)}`)
+        .then(response => {
+          if (!response.ok) {
+            throw new Error('Network response was not ok');
+          }
+          return response.json();
+        })
+        .then(data => {
+          if (data.error) {
+            console.error('Error:', data.error);
+            alert('Gagal mengambil URL streaming. Silakan coba lagi nanti.');
+          } else {
+            const streamUrl = data.stream_url;
+            displayVideo(streamUrl);
+          }
+        })
+        .catch(error => {
+          console.error('Error:', error);
+          alert('Terjadi kesalahan. Silakan coba lagi nanti.');
+        });
+    }
+
+    // Fungsi untuk menampilkan video (contoh menggunakan iframe)
+    function displayVideo(streamUrl) {
+      const iframe = document.createElement('iframe');
+      iframe.src = streamUrl;
+      iframe.width = '100%';
+      iframe.height = '480'; 
+      iframe.allowFullscreen = true;
+
+      const videoContainer = document.getElementById('videoContainer');
+      videoContainer.innerHTML = ''; 
+      videoContainer.appendChild(iframe);
+    }
+  </script>
+</body>
+</html>
+

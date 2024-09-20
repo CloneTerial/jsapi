@@ -1,0 +1,58 @@
+import requests
+from bs4 import BeautifulSoup
+import sys
+import json
+
+def fetch_anime_details(anime_url):
+    try:
+        response = requests.get(anime_url)
+
+        # Hanya log ke stderr jika diperlukan (tidak akan mengganggu output JSON)
+        if response.status_code != 200:
+            return json.dumps({"error": f"Error: {response.status_code} Client Error"})
+
+        soup = BeautifulSoup(response.text, 'html.parser')
+
+        # Ekstrak detail anime
+        title_element = soup.select_one('h1.ptitle')
+        if title_element:
+            title = title_element.text.strip()
+        else:
+            return json.dumps({"error": "Title not found"})
+
+        image_element = soup.select_one('.container img')
+        image = image_element['src'] if image_element else ""
+
+        info_list = soup.select('.infopost li')
+        details = {}
+        for item in info_list:
+            key_element = item.find('b')
+            value_element = item.find('span')
+
+            if key_element and value_element:
+                key = key_element.text.strip().replace(' :', '')
+                value = value_element.text.strip()
+                details[key] = value
+
+        synopsis_element = soup.select_one('.sinops')
+        synopsis = synopsis_element.text.strip() if synopsis_element else ""
+
+        result = {
+            "title": title,
+            "image": image,
+            "synopsis": synopsis,
+            "list": list,
+            **details
+        }
+
+        return json.dumps(result)
+
+    except requests.exceptions.RequestException as e:
+        # Log error ke stderr
+        sys.stderr.write(f"Network error: {e}")
+        return json.dumps({"error": f"Network error: {e}"})
+
+if __name__ == "__main__":
+    anime_url = sys.argv[1] if len(sys.argv) > 1 else ''
+    data = fetch_anime_details(anime_url)
+    print(data)  # Hanya cetak JSON yang valid
