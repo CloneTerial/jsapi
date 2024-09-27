@@ -1,16 +1,16 @@
 const express = require('express');
 const path = require('path');
-const { fetchAnimeData } = require('./scrapers/nimegami_search'); 
-const { fetchAnimeDetails } = require('./scrapers/nimegami_details'); 
+const cors = require('cors');
+const { fetchAnimeData } = require('../scrapers/nimegami_search');
+const { fetchAnimeDetails } = require('../scrapers/nimegami_details');
 
 const app = express();
-const port = 3000;
 
-const cors = require('cors');
+// CORS untuk mengizinkan semua origin
+app.use(cors());
 
-app.use(cors()); // Mengizinkan semua origin
 // Middleware untuk melayani file statis dari direktori 'public'
-app.use(express.static(path.join(__dirname, 'public')));
+app.use(express.static(path.join(__dirname, '../public')));
 
 // Endpoint untuk menangani permintaan pencarian
 app.get('/api/search', async (req, res) => {
@@ -21,7 +21,7 @@ app.get('/api/search', async (req, res) => {
   }
 
   try {
-    const jsonData = await fetchAnimeData(query); 
+    const jsonData = await fetchAnimeData(query);
     res.json(JSON.parse(jsonData)); // Parse the stringified JSON
   } catch (error) {
     console.error('Error during scraping:', error);
@@ -53,10 +53,8 @@ app.get('/api/episode', (req, res) => {
 
 // Route untuk melayani berkas HTML dari direktori 'public'
 app.get('/', (req, res) => {
-  res.sendFile(path.join(__dirname, 'public', 'index.html'));
+  res.sendFile(path.join(__dirname, '../public', 'index.html'));
 });
 
-// Menjalankan server
-app.listen(port, () => {
-  console.log(`Server berjalan di http://localhost:${port}`);
-});
+// Ekspor sebagai handler untuk serverless function
+module.exports = app;
